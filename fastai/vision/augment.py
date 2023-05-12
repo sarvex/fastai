@@ -247,7 +247,7 @@ class RandomResizedCrop(RandTransform):
             self.tl,self.cp_size = (0,0),self.orig_sz
             return
         self.final_size = self.size
-        for attempt in range(10):
+        for _ in range(10):
             area = random.uniform(self.min_scale, self.max_scale) * w * h
             ratio = math.exp(random.uniform(math.log(self.ratio[0]), math.log(self.ratio[1])))
             nw = int(round(math.sqrt(area * ratio)))
@@ -408,7 +408,7 @@ class RandomResizedCropGPU(RandTransform):
     def before_call(self, b, split_idx):
         self.do = True
         h,w = fastuple((b[0] if isinstance(b, tuple) else b).shape[-2:])
-        for attempt in range(10):
+        for _ in range(10):
             if split_idx: break
             area = random.uniform(self.min_scale,self.max_scale) * w * h
             ratio = math.exp(random.uniform(math.log(self.ratio[0]), math.log(self.ratio[1])))
@@ -466,7 +466,8 @@ def flip_mat(x, p=0.5, draw=None, batch=False):
 
 # Cell
 def _get_default(x, mode=None, pad_mode=None):
-    if mode is None: mode='bilinear' if isinstance(x, TensorMask) else 'bilinear'
+    if mode is None:
+        mode = 'bilinear'
     if pad_mode is None: pad_mode=PadMode.Zeros if isinstance(x, (TensorPoint, TensorBBox)) else PadMode.Reflection
     x0 = x[0] if isinstance(x, tuple) else x
     return x0,mode,pad_mode
@@ -599,8 +600,7 @@ def _linalg_solve(A,B):
 def _solve(A,B):
     return torch.solve(B,A)[0]
 
-if ismin_torch('1.9'): solve = _linalg_solve
-else: solve = _solve
+solve = _linalg_solve if ismin_torch('1.9') else _solve
 
 # Cell
 def find_coeffs(p1, p2):
@@ -609,8 +609,34 @@ def find_coeffs(p1, p2):
     p = p1[:,0,0]
     #The equations we'll need to solve.
     for i in range(p1.shape[1]):
-        m.append(stack([p2[:,i,0], p2[:,i,1], t1(p), t0(p), t0(p), t0(p), -p1[:,i,0]*p2[:,i,0], -p1[:,i,0]*p2[:,i,1]]))
-        m.append(stack([t0(p), t0(p), t0(p), p2[:,i,0], p2[:,i,1], t1(p), -p1[:,i,1]*p2[:,i,0], -p1[:,i,1]*p2[:,i,1]]))
+        m.extend(
+            (
+                stack(
+                    [
+                        p2[:, i, 0],
+                        p2[:, i, 1],
+                        t1(p),
+                        t0(p),
+                        t0(p),
+                        t0(p),
+                        -p1[:, i, 0] * p2[:, i, 0],
+                        -p1[:, i, 0] * p2[:, i, 1],
+                    ]
+                ),
+                stack(
+                    [
+                        t0(p),
+                        t0(p),
+                        t0(p),
+                        p2[:, i, 0],
+                        p2[:, i, 1],
+                        t1(p),
+                        -p1[:, i, 1] * p2[:, i, 0],
+                        -p1[:, i, 1] * p2[:, i, 1],
+                    ]
+                ),
+            )
+        )
     #The 8 scalars we seek are solution of AX = B
     A = stack(m).permute(2, 0, 1)
     B = p1.view(p1.shape[0], 8, 1)

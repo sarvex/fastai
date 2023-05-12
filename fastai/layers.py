@@ -516,11 +516,10 @@ class TimeDistributed(Module):
         "input x with shape:(bs,seq_len,channels,width,height)"
         if self.low_mem or self.tdim!=1:
             return self.low_mem_forward(*tensors, **kwargs)
-        else:
-            #only support tdim=1
-            inp_shape = tensors[0].shape
-            bs, seq_len = inp_shape[0], inp_shape[1]
-            out = self.module(*[x.view(bs*seq_len, *x.shape[2:]) for x in tensors], **kwargs)
+        #only support tdim=1
+        inp_shape = tensors[0].shape
+        bs, seq_len = inp_shape[0], inp_shape[1]
+        out = self.module(*[x.view(bs*seq_len, *x.shape[2:]) for x in tensors], **kwargs)
         return self.format_output(out, bs, seq_len)
 
     def low_mem_forward(self, *tensors, **kwargs):
@@ -617,7 +616,7 @@ class ParameterModule(Module):
 def children_and_parameters(m):
     "Return the children of `m` and its direct parameters not registered in modules."
     children = list(m.children())
-    children_p = sum([[id(p) for p in c.parameters()] for c in m.children()],[])
+    children_p = sum(([id(p) for p in c.parameters()] for c in m.children()), [])
     for p in m.parameters():
         if id(p) not in children_p: children.append(ParameterModule(p))
     return children
@@ -639,11 +638,11 @@ class NoneReduce():
     def __init__(self, loss_func): self.loss_func,self.old_red = loss_func,None
 
     def __enter__(self):
-        if hasattr(self.loss_func, 'reduction'):
-            self.old_red = self.loss_func.reduction
-            self.loss_func.reduction = 'none'
-            return self.loss_func
-        else: return partial(self.loss_func, reduction='none')
+        if not hasattr(self.loss_func, 'reduction'):
+            return partial(self.loss_func, reduction='none')
+        self.old_red = self.loss_func.reduction
+        self.loss_func.reduction = 'none'
+        return self.loss_func
 
     def __exit__(self, type, value, traceback):
         if self.old_red is not None: self.loss_func.reduction = self.old_red

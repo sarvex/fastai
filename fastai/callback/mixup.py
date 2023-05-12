@@ -62,7 +62,7 @@ class CutMix(MixHandler):
         bs, _, H, W = self.x.size()
         self.lam = self.distrib.sample((1,)).to(self.x.device)
         shuffle = torch.randperm(bs).to(self.x.device)
-        xb1,self.yb1 = self.x[shuffle], tuple((self.y[shuffle],))
+        xb1,self.yb1 = self.x[shuffle], (self.y[shuffle], )
         x1, y1, x2, y2 = self.rand_bbox(W, H, self.lam)
         self.learn.xb[0][..., y1:y2, x1:x2] = xb1[..., y1:y2, x1:x2]
         self.lam = (1 - ((x2-x1)*(y2-y1))/float(W*H))

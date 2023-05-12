@@ -10,16 +10,17 @@ def _mod2page(mod):
     if mod == Tensor: return 'tensors.html'
     name = mod.__name__
     name = name.replace('torch.', '').replace('utils.', '')
-    if name.startswith('nn.modules'): return 'nn.html'
-    return f'{name}.html'
+    return 'nn.html' if name.startswith('nn.modules') else f'{name}.html'
 
 # Cell
 import importlib
 
 # Cell
 def pytorch_doc_link(name):
-    if name.startswith('F'): name = 'torch.nn.functional' + name[1:]
-    if not name.startswith('torch.'): name = 'torch.' + name
+    if name.startswith('F'):
+        name = f'torch.nn.functional{name[1:]}'
+    if not name.startswith('torch.'):
+        name = f'torch.{name}'
     if name == 'torch.Tensor': return f'{PYTORCH_URL}tensors.html'
     try:
         mod = importlib.import_module(name)

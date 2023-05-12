@@ -40,8 +40,7 @@ class WeightDropout(Module):
         "Apply dropout to the raw weights."
         for layer in self.layer_names:
             raw_w = getattr(self, f'{layer}_raw')
-            if self.training: w = F.dropout(raw_w, p=self.weight_p)
-            else: w = raw_w.clone()
+            w = F.dropout(raw_w, p=self.weight_p) if self.training else raw_w.clone()
             setattr(self.module, layer, w)
 
     def forward(self, *args):
@@ -92,7 +91,9 @@ class AWD_LSTM(Module):
                                                  bidir, weight_p, l) for l in range(n_layers)])
         self.encoder.weight.data.uniform_(-self.initrange, self.initrange)
         self.input_dp = RNNDropout(input_p)
-        self.hidden_dps = nn.ModuleList([RNNDropout(hidden_p) for l in range(n_layers)])
+        self.hidden_dps = nn.ModuleList(
+            [RNNDropout(hidden_p) for _ in range(n_layers)]
+        )
         self.reset()
 
     def forward(self, inp, from_embeds=False):

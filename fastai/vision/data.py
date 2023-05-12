@@ -38,11 +38,12 @@ def clip_remove_empty(bbox, label):
 def bb_pad(samples, pad_idx=0):
     "Function that collect `samples` of labelled bboxes and adds padding with `pad_idx`."
     samples = [(s[0], *clip_remove_empty(*s[1:])) for s in samples]
-    max_len = max([len(s[2]) for s in samples])
+    max_len = max(len(s[2]) for s in samples)
     def _f(img,bbox,lbl):
         bbox = torch.cat([bbox,bbox.new_zeros(max_len-bbox.shape[0], 4)])
         lbl  = torch.cat([lbl, lbl .new_zeros(max_len-lbl .shape[0])+pad_idx])
         return img,bbox,lbl
+
     return [_f(*s) for s in samples]
 
 # Cell
@@ -186,5 +187,4 @@ class SegmentationDataLoaders(DataLoaders):
                            get_y=label_func,
                            item_tfms=item_tfms,
                            batch_tfms=batch_tfms)
-        res = cls.from_dblock(dblock, fnames, path=path, **kwargs)
-        return res
+        return cls.from_dblock(dblock, fnames, path=path, **kwargs)

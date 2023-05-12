@@ -136,8 +136,13 @@ def gather_args(self:Learner):
         n_inp = self.dls.train.n_inp
         args['n_inp'] = n_inp
         xb = self.dls.valid.one_batch()[:n_inp]
-        args.update({f'input {n+1} dim {i+1}':d for n in range(n_inp) for i,d in enumerate(list(detuplify(xb[n]).shape))})
-    except: print(f'Could not gather input dimensions')
+        args |= {
+            f'input {n+1} dim {i+1}': d
+            for n in range(n_inp)
+            for i, d in enumerate(list(detuplify(xb[n]).shape))
+        }
+    except:
+        print('Could not gather input dimensions')
     # other useful information
     with ignore_exceptions():
         args['batch size'] = self.dls.bs
@@ -270,7 +275,8 @@ def wandb_process(x:TensorText, y:(TensorCategory,TensorMultiCategory), samples,
 @typedispatch
 def wandb_process(x:Tabular, y:Tabular, samples, outs):
     df = x.all_cols
-    for n in x.y_names: df[n+'_pred'] = y[n].values
+    for n in x.y_names:
+        df[f'{n}_pred'] = y[n].values
     return {"Prediction Samples": wandb.Table(dataframe=df)}
 
 # Cell

@@ -168,7 +168,7 @@ def fine_tune(self:Learner, epochs, base_lr=2e-3, freeze_epochs=1, lr_mult=100,
 class LRFinder(ParamScheduler):
     "Training with exponentially growing learning rate"
     def __init__(self, start_lr=1e-7, end_lr=10, num_it=100, stop_div=True):
-        if num_it < 6: num_it = 6
+        num_it = max(num_it, 6)
         self.scheds = {'lr': [SchedExp(s, e) for (s,e) in zip(start_lr,end_lr)
                              ] if is_listy(start_lr) else SchedExp(start_lr, end_lr)}
         self.num_it,self.stop_div = num_it,stop_div

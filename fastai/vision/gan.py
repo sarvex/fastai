@@ -236,8 +236,7 @@ class AdaptiveGANSwitcher(Callback):
         if not self.training: return
         if self.gan_trainer.gen_mode:
             if self.gen_thresh is None or self.loss < self.gen_thresh: self.gan_trainer.switch()
-        else:
-            if self.critic_thresh is None or self.loss < self.critic_thresh: self.gan_trainer.switch()
+        elif self.critic_thresh is None or self.loss < self.critic_thresh: self.gan_trainer.switch()
 
 # Cell
 class GANDiscriminativeLR(Callback):

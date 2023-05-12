@@ -110,12 +110,11 @@ class URLs():
     WT103_FWD          = f'{S3_MODEL}wt103-fwd.tgz'
     WT103_BWD          = f'{S3_MODEL}wt103-bwd.tgz'
 
-    def path(url='.', c_key='archive'):
+    def path(self, c_key='archive'):
         "Return local path where to download based on `c_key`"
-        fname = url.split('/')[-1]
+        fname = self.split('/')[-1]
         local_path = URLs.LOCAL_PATH/('models' if c_key=='model' else 'data')/fname
-        if local_path.exists(): return local_path
-        return fastai_path(c_key)/fname
+        return local_path if local_path.exists() else fastai_path(c_key)/fname
 
 # Cell
 def untar_data(url, archive=None, data=None, c_key='data', force_download=False):#, extract_func=file_extract, timeout=4):

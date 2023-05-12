@@ -194,7 +194,7 @@ def tokenize_files(files, path, output_dir, output_names=None, **kwargs):
 # Cell
 def _join_texts(df, mark_fields=False):
     "Join texts in row `idx` of `df`, marking each field with `FLD` if `mark_fields=True`"
-    text_col = (f'{FLD} {1} ' if mark_fields else '' ) + df.iloc[:,0].astype(str)
+    text_col = (f'{FLD} 1 ' if mark_fields else '') + df.iloc[:,0].astype(str)
     for i in range(1,len(df.columns)):
         text_col += (f' {FLD} {i+1} ' if mark_fields else ' ') + df.iloc[:,i].astype(str)
     return text_col.values
@@ -203,9 +203,11 @@ def _join_texts(df, mark_fields=False):
 def tokenize_texts(texts, n_workers=defaults.cpus, rules=None, tok=None):
     "Tokenize `texts` in parallel using `n_workers`"
     rules = L(ifnone(rules, defaults.text_proc_rules.copy()))
-    outputs = L(parallel_tokenize(texts, tok=tok, rules=rules, n_workers=n_workers)
-               ).sorted().itemgot(1)
-    return outputs
+    return (
+        L(parallel_tokenize(texts, tok=tok, rules=rules, n_workers=n_workers))
+        .sorted()
+        .itemgot(1)
+    )
 
 # Cell
 def tokenize_df(df, text_cols, n_workers=defaults.cpus, rules=None, mark_fields=None,
@@ -281,24 +283,28 @@ class Tokenizer(Transform):
         return res
 
     def setups(self, dsets):
-        if not self.mode == 'df' or not isinstance(dsets.items, pd.DataFrame): return
+        if self.mode != 'df' or not isinstance(dsets.items, pd.DataFrame): return
         dsets.items,count = tokenize_df(dsets.items, self.text_cols, rules=self.rules, **self.kwargs)
         if self.counter is None: self.counter = count
         return dsets
 
     def encodes(self, o:Path):
-        if self.mode=='folder' and str(o).startswith(str(self.path)):
-            tok = self.output_dir/o.relative_to(self.path)
-            return L(tok.read_text(encoding='UTF-8').split(' '))
-        else: return self._tokenize1(o.read_text())
+        if self.mode != 'folder' or not str(o).startswith(str(self.path)):
+            return self._tokenize1(o.read_text())
+        tok = self.output_dir/o.relative_to(self.path)
+        return L(tok.read_text(encoding='UTF-8').split(' '))
 
     def encodes(self, o:str): return self._tokenize1(o)
     def _tokenize1(self, o): return first(self.tok([compose(*self.rules)(o)]))
 
     def get_lengths(self, items):
         if self.lengths is None: return None
-        if self.mode == 'df':
-            if isinstance(items, pd.DataFrame) and 'text_lengths' in items.columns: return items['text_length'].values
+        if (
+            self.mode == 'df'
+            and isinstance(items, pd.DataFrame)
+            and 'text_lengths' in items.columns
+        ):
+            return items['text_length'].values
         if self.mode == 'folder':
             try:
                 res = [self.lengths[str(Path(i).relative_to(self.path))] for i in items]
@@ -332,7 +338,7 @@ class SentencePieceTokenizer():#TODO: pass the special tokens symbol to sp
     def _get_vocab_sz(self, raw_text_path):
         cnt = Counter()
         with open(raw_text_path, 'r') as f:
-            for line in f.readlines():
+            for line in f:
                 cnt.update(line.split())
                 if len(cnt)//4 > self.max_vocab_sz: return self.max_vocab_sz
         res = len(cnt)//4

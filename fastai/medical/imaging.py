@@ -350,11 +350,10 @@ def shape(self:DcmDataset):
 def _cast_dicom_special(x):
     cls = type(x)
     if not cls.__module__.startswith('pydicom'): return x
-    if cls.__base__ == object: return x
-    return cls.__base__(x)
+    return x if cls.__base__ == object else cls.__base__(x)
 
 def _split_elem(vals):
-    res = dict()
+    res = {}
     for val in vals:
         k, v = val.keyword, val.value
         if not isinstance(v,DcmMultiValue):
@@ -376,10 +375,12 @@ def as_dict(self:DcmDataset, px_summ=True, window=dicom_windows.brain):
     stats = 'min','max','mean','std'
     try:
         pxs = self.pixel_array
-        for f in stats: res['img_'+f] = getattr(pxs,f)()
+        for f in stats:
+            res[f'img_{f}'] = getattr(pxs,f)()
         res['img_pct_window'] = self.pct_in_window(*window)
     except Exception as e:
-        for f in stats: res['img_'+f] = 0
+        for f in stats:
+            res[f'img_{f}'] = 0
         print(res,e)
     return res
 
@@ -405,5 +406,4 @@ class DicomSegmentationDataLoaders(DataLoaders):
                            get_y=label_func,
                            item_tfms=item_tfms,
                            batch_tfms=batch_tfms)
-        res = cls.from_dblock(dblock, fnames, path=path, **kwargs)
-        return res
+        return cls.from_dblock(dblock, fnames, path=path, **kwargs)
